@@ -10,6 +10,7 @@ export default function ChatAluno() {
   const [personal, setPersonal] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const alunoIdRef = useRef<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -20,6 +21,7 @@ export default function ChatAluno() {
       const { data: profile } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
       setAluno(profile)
+      alunoIdRef.current = profile.id
 
       const { data: p } = await supabase
         .from('profiles').select('*').eq('id', profile.personal_id).single()
@@ -27,7 +29,6 @@ export default function ChatAluno() {
 
       await carregarMensagens(user.id, profile.personal_id)
 
-      // Marca mensagens do personal como lidas
       await supabase
         .from('mensagens')
         .update({ lida: true })
@@ -35,21 +36,19 @@ export default function ChatAluno() {
         .eq('destinatario_id', user.id)
         .eq('lida', false)
 
-      // Realtime — escuta novas mensagens
       const channel = supabase
         .channel('chat-aluno')
         .on('postgres_changes', {
-  event: 'INSERT',
-  schema: 'public',
-  table: 'mensagens',
-}, (payload) => {
-  
-  const msg = payload.new
-  setMensagens(prev => {
-    if (prev.find(m => m.id === msg.id)) return prev
-    return [...prev, msg]
-  })
-})
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mensagens',
+        }, (payload) => {
+          const msg = payload.new
+          setMensagens(prev => {
+            if (prev.find(m => m.id === msg.id)) return prev
+            return [...prev, msg]
+          })
+        })
         .subscribe()
 
       setLoading(false)
@@ -113,7 +112,7 @@ export default function ChatAluno() {
       </header>
 
       {/* MENSAGENS */}
-      <main className="flex-1 overflow-y-auto p-4 space-y-3" style={{maxWidth: 700, width:'100%', margin:'0 auto'}}>
+      <main className="flex-1 overflow-y-auto p-4 space-y-3" style={{maxWidth:700, width:'100%', margin:'0 auto'}}>
         {mensagens.length === 0 && (
           <div className="text-center py-20 text-gray-600">
             <p className="text-4xl mb-4">💬</p>
@@ -122,7 +121,7 @@ export default function ChatAluno() {
           </div>
         )}
         {mensagens.map((msg) => {
-          const minha = msg.remetente_id === aluno?.id && !!aluno?.id
+          const minha = msg.remetente_id === alunoIdRef.current
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${minha ? 'justify-end' : 'justify-start'}`}>
               {!minha && (
@@ -130,7 +129,7 @@ export default function ChatAluno() {
                   {personal?.full_name[0].toUpperCase()}
                 </div>
               )}
-              <div className={`max-w-xs lg:max-w-md ${minha ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+              <div className={`max-w-xs lg:max-w-md flex flex-col gap-1 ${minha ? 'items-end' : 'items-start'}`}>
                 {!minha && (
                   <span className="text-[10px] text-gray-500 font-bold ml-1">{personal?.full_name}</span>
                 )}
