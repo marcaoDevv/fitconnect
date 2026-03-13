@@ -39,18 +39,17 @@ export default function ChatAluno() {
       const channel = supabase
         .channel('chat-aluno')
         .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'mensagens',
-        }, (payload) => {
-          const msg = payload.new
-          if (
-            (msg.remetente_id === user.id && msg.destinatario_id === profile.personal_id) ||
-            (msg.remetente_id === profile.personal_id && msg.destinatario_id === user.id)
-          ) {
-            setMensagens(prev => [...prev, msg])
-          }
-        })
+  event: 'INSERT',
+  schema: 'public',
+  table: 'mensagens',
+}, (payload) => {
+  
+  const msg = payload.new
+  setMensagens(prev => {
+    if (prev.find(m => m.id === msg.id)) return prev
+    return [...prev, msg]
+  })
+})
         .subscribe()
 
       setLoading(false)
@@ -123,7 +122,7 @@ export default function ChatAluno() {
           </div>
         )}
         {mensagens.map((msg) => {
-          const minha = msg.remetente_id === aluno?.id
+          const minha = msg.remetente_id === aluno?.id && !!aluno?.id
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${minha ? 'justify-end' : 'justify-start'}`}>
               {!minha && (
@@ -135,7 +134,7 @@ export default function ChatAluno() {
                 {!minha && (
                   <span className="text-[10px] text-gray-500 font-bold ml-1">{personal?.full_name}</span>
                 )}
-                <div className={`px-4 py-3 rounded-2xl text-sm font-medium ${
+                <div className={`px-4 py-3 rounded-2xl text-sm font-medium min-w-[60px] ${
                   minha
                     ? 'bg-blue-600 text-white rounded-br-sm'
                     : 'bg-gray-900 border border-gray-800 text-gray-100 rounded-bl-sm'

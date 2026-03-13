@@ -11,6 +11,7 @@ export default function ChatPersonal() {
   const [aluno, setAluno] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const personalIdRef = useRef<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function ChatPersonal() {
       const { data: profile } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
       setPersonal(profile)
+      personalIdRef.current = profile.id // <-- salva no ref imediatamente
 
       const { data: a } = await supabase
         .from('profiles').select('*').eq('id', alunoId).single()
@@ -28,7 +30,6 @@ export default function ChatPersonal() {
 
       await carregarMensagens(user.id, alunoId as string)
 
-      // Marca mensagens do aluno como lidas
       await supabase
         .from('mensagens')
         .update({ lida: true })
@@ -36,7 +37,6 @@ export default function ChatPersonal() {
         .eq('destinatario_id', user.id)
         .eq('lida', false)
 
-      // Realtime
       const channel = supabase
         .channel(`chat-personal-${alunoId}`)
         .on('postgres_changes', {
@@ -45,14 +45,16 @@ export default function ChatPersonal() {
           table: 'mensagens',
         }, (payload) => {
           const msg = payload.new
-          if (
-            (msg.remetente_id === user.id && msg.destinatario_id === alunoId) ||
-            (msg.remetente_id === alunoId && msg.destinatario_id === user.id)
-          ) {
-            setMensagens(prev => [...prev, msg])
-          }
+          console.log('REALTIME recebeu:', msg)
+          console.log('personalIdRef:', personalIdRef.current)
+          setMensagens(prev => {
+            if (prev.find(m => m.id === msg.id)) return prev
+            return [...prev, msg]
+          })
         })
-        .subscribe()
+        .subscribe((status) => {
+          console.log('STATUS canal personal:', status)
+        })
 
       setLoading(false)
       return () => { supabase.removeChannel(channel) }
@@ -105,7 +107,7 @@ export default function ChatPersonal() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-black text-sm shrink-0">
           {aluno?.full_name[0].toUpperCase()}
         </div>
         <div>
@@ -124,11 +126,11 @@ export default function ChatPersonal() {
           </div>
         )}
         {mensagens.map((msg) => {
-          const minha = msg.remetente_id === personal?.id
+          const minha = msg.remetente_id === personalIdRef.current
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${minha ? 'justify-end' : 'justify-start'}`}>
               {!minha && (
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center font-black text-xs shrink-0">
+                <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xs shrink-0">
                   {aluno?.full_name[0].toUpperCase()}
                 </div>
               )}
@@ -136,7 +138,7 @@ export default function ChatPersonal() {
                 {!minha && (
                   <span className="text-[10px] text-gray-500 font-bold ml-1">{aluno?.full_name}</span>
                 )}
-                <div className={`px-4 py-3 rounded-2xl text-sm font-medium ${
+                <div className={`px-4 py-3 rounded-2xl text-sm font-medium min-w-[60px] ${
                   minha
                     ? 'bg-blue-600 text-white rounded-br-sm'
                     : 'bg-gray-900 border border-gray-800 text-gray-100 rounded-bl-sm'
