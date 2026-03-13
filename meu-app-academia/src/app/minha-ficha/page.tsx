@@ -66,24 +66,19 @@ export default function MinhaFicha() {
     }
   }
 
-  // --- FUNÇÃO DE MONITORAMENTO DE PROGRESSO (CORRIGIDA) ---
+  // --- LÓGICA DE MONITORAMENTO ---
   const exerciciosAtuais = treinos[activeTab] || []
   const totalExercicios = exerciciosAtuais.length
-  
-  // Filtra apenas os concluídos que pertencem à aba ativa
   const concluidosNesteTreino = exerciciosAtuais.filter((ex: any) => 
     concluidos.includes(ex.id)
   ).length
-
   const porcentagem = totalExercicios > 0 ? Math.round((concluidosNesteTreino / totalExercicios) * 100) : 0
 
-  // Função para as frases de motivação
+  // 1. LÓGICA DE CONDICIONAIS (MENSAGENS)
   const getMensagem = (p: number) => {
     if (p === 0) return "Bora começar? O shape não vem sozinho! 💪"
-    if (p > 0 && p < 50) return "No caminho certo. Mantenha o foco! ⚡"
-    if (p >= 50 && p < 100) return "Mais da metade já foi. Não para agora! 🔥"
-    if (p === 100) return "Treino Completo! Missão cumprida. 🏆"
-    return "Faltam poucos para o descanso"
+    if (p === 100) return "MISSÃO CUMPRIDA! O treino tá pago. 🏆"
+    return "Continua assim, você está indo muito bem! ⚡" // 1% a 99%
   }
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-black italic">SINCRONIZANDO...</div>
@@ -99,7 +94,6 @@ export default function MinhaFicha() {
           {aluno?.full_name}
         </p>
 
-        {/* BARRA DE PROGRESSO ATUALIZADA */}
         <div className="max-w-xs mx-auto mt-6 px-4">
           <div className="flex justify-between items-end mb-2">
             <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Progresso</span>
@@ -111,8 +105,7 @@ export default function MinhaFicha() {
               style={{ width: `${porcentagem}%` }}
             ></div>
           </div>
-          {/* FRASE DE MOTIVAÇÃO DINÂMICA */}
-          <p className={`text-[9px] font-bold uppercase mt-2 tracking-[2px] transition-colors ${porcentagem === 100 ? 'text-green-500' : 'text-gray-600'}`}>
+          <p className={`text-[9px] font-bold uppercase mt-2 tracking-[2px] transition-colors duration-500 ${porcentagem === 100 ? 'text-green-500' : 'text-gray-600'}`}>
             {getMensagem(porcentagem)}
           </p>
         </div>
@@ -124,7 +117,7 @@ export default function MinhaFicha() {
           {abasDisponiveis.map(tab => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab) }} // Removi o reset de concluídos aqui para persistir entre abas se necessário
+              onClick={() => { setActiveTab(tab) }}
               className={`flex-1 py-4 px-6 rounded-2xl font-black transition-all whitespace-nowrap text-[10px] uppercase tracking-widest ${
                 activeTab === tab 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' 
@@ -167,14 +160,18 @@ export default function MinhaFicha() {
         ))}
       </main>
 
-      {/* BOTÃO FINALIZAR */}
+      {/* 2. ESTADO DE CONCLUSÃO TOTAL NO BOTÃO */}
       {activeTab && (
         <div className="fixed bottom-6 left-0 right-0 px-6">
           <button 
             onClick={finalizarTreino}
-            className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all"
+            className={`w-full py-5 rounded-2xl font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all duration-500 ${
+              porcentagem === 100 
+                ? 'bg-green-500 text-white animate-pulse shadow-green-900/40' 
+                : 'bg-white text-black'
+            }`}
           >
-            Finalizar {activeTab}
+            {porcentagem === 100 ? `Finalizar ${activeTab} 🔥` : `Finalizar ${activeTab}`}
           </button>
         </div>
       )}
