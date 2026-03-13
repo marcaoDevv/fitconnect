@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 export default function MinhaFicha() {
   const [aluno, setAluno] = useState<any>(null)
   const [treinos, setTreinos] = useState<any>({})
-  const [activeTab, setActiveTab] = useState('A') // Inicia no Treino A
+  const [activeTab, setActiveTab] = useState('') // Inicia vazio para ser preenchido dinamicamente
   const [loading, setLoading] = useState(true)
   const [concluidos, setConcluidos] = useState<string[]>([]) 
   const router = useRouter()
@@ -16,15 +16,13 @@ export default function MinhaFicha() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
 
-      // 1. Busca perfil
+      // 1. Busca perfil e bloqueia Personal
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       
-      // TRAVA DE SEGURANÇA: Redireciona personal para a dashboard dele
       if (profile?.role === 'personal') {
         router.push('/dashboard')
         return
       }
-
       setAluno(profile)
 
       // 2. Busca exercícios
@@ -34,17 +32,24 @@ export default function MinhaFicha() {
         .eq('aluno_id', user.id)
         .order('ordem', { ascending: true })
 
-      if (exs) {
+      if (exs && exs.length > 0) {
         const agrupados = exs.reduce((acc: any, curr: any) => {
-          const cat = curr.divisao.toUpperCase().replace('TREINO ', '') // Normaliza para 'A', 'B', etc.
+          const cat = curr.divisao.toUpperCase().replace('TREINO ', '')
           if (!acc[cat]) acc[cat] = []
           acc[cat].push(curr)
           return acc
         }, {})
+        
         setTreinos(agrupados)
+
+        // PEGA AS CHAVES EXISTENTES (Ex: ['B', 'C']) E DEFINE A PRIMEIRA COMO ATIVA
+        const abasExistentes = Object.keys(agrupados).sort()
+        if (abasExistentes.length > 0) {
+          setActiveTab(abasExistentes[0])
+        }
       }
 
-      // 3. Persistência: Carrega progresso do localStorage
+      // 3. Persistência
       const salvo = localStorage.getItem(`progresso_${user.id}`)
       if (salvo) setConcluidos(JSON.parse(salvo))
 
@@ -53,7 +58,6 @@ export default function MinhaFicha() {
     fetchDados()
   }, [router])
 
-  // Salva no localStorage toda vez que marcar um exercício
   useEffect(() => {
     if (aluno?.id) {
       localStorage.setItem(`progresso_${aluno.id}`, JSON.stringify(concluidos))
@@ -77,8 +81,8 @@ export default function MinhaFicha() {
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-black italic">SINCRONIZANDO...</div>
 
-  // Opções de abas fixas para o seletor
-  const abasDisponiveis = ['A', 'B', 'C', 'D', 'E']
+  // MÁGICA AQUI: Pega apenas as letras que possuem exercícios cadastrados
+  const abasDisponiveis = Object.keys(treinos).sort()
 
   return (
     <div className="min-h-screen bg-black text-white p-4 font-sans pb-24">
@@ -90,26 +94,27 @@ export default function MinhaFicha() {
         </p>
       </header>
 
-      {/* FILTRO DE ESTADO (Tab Switching) */}
-      <div className="flex justify-between gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800">
-        {abasDisponiveis.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-4 rounded-2xl font-black transition-all ${
-              activeTab === tab 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 scale-105' 
-                : 'text-gray-600 hover:text-gray-400'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* SELETOR DINÂMICO: Só renderiza se houver treinos */}
+      {abasDisponiveis.length > 0 && (
+        <div className="flex justify-center gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800">
+          {abasDisponiveis.map(tab => (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setConcluidos([]) }}
+              className={`flex-1 py-4 rounded-2xl font-black transition-all max-w-[80px] ${
+                activeTab === tab 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 scale-105' 
+                  : 'text-gray-600 hover:text-gray-400'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* LISTA DE EXERCÍCIOS OU MENSAGEM DINÂMICA */}
       <main className="space-y-4">
-        {treinos[activeTab] && treinos[activeTab].length > 0 ? (
+        {activeTab && treinos[activeTab]?.length > 0 ? (
           treinos[activeTab].map((ex: any) => (
             <div 
               key={ex.id}
@@ -137,21 +142,19 @@ export default function MinhaFicha() {
             </div>
           ))
         ) : (
-          /* MENSAGEM DE ESTADO VAZIO DINÂMICA */
-          <div className="text-center py-20 px-6 bg-gray-900/20 border-2 border-dashed border-gray-800 rounded-[40px] animate-in fade-in duration-700">
+          <div className="text-center py-20 px-6 bg-gray-900/20 border-2 border-dashed border-gray-800 rounded-[40px]">
             <div className="text-4xl mb-4">😴</div>
             <h2 className="text-xl font-black uppercase italic text-gray-500">
-              Treino {activeTab} não cadastrado
+              Nenhum treino cadastrado
             </h2>
             <p className="text-gray-600 text-sm mt-2">
-              Parece que hoje é seu dia de descanso. Aproveite para recuperar as fibras! 🍗
+              Aguarde o seu treinador liberar sua ficha de treinos!
             </p>
           </div>
         )}
       </main>
 
-      {/* BOTÃO FINALIZAR FIXO */}
-      {treinos[activeTab] && (
+      {activeTab && (
         <div className="fixed bottom-6 left-0 right-0 px-6">
           <button 
             onClick={finalizarTreino}
