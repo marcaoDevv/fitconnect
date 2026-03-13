@@ -55,7 +55,7 @@ function AuthForm() {
         } else {
           // Lógica do Aluno: Já respondeu a saúde?
           if (profile?.anamnese_completa) {
-            router.push('/minha-ficha')
+            router.push('/home')
           } else {
             router.push('/anamnese') // O "Pedágio"
           }

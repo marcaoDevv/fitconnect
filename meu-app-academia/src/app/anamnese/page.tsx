@@ -35,7 +35,7 @@ export default function Anamnese() {
       await supabase.from('profiles').update({ anamnese_completa: true }).eq('id', user.id)
       
       alert('Perfil de saúde configurado! Vamos ao treino.')
-      router.push('/minha-ficha') // Destino final do aluno
+      router.push('/home') // Destino final do aluno
     }
     setLoading(false)
   }

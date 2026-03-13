@@ -176,6 +176,12 @@ export default function Dashboard() {
                     >
                       Anamnese
                     </button>
+                    <button
+  onClick={() => router.push(`/chat/${aluno.id}`)}
+  className="flex-1 bg-blue-900/10 border border-blue-900/30 text-blue-400 hover:bg-blue-900/20 py-3 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95"
+>
+  Chat
+</button>
                   </div>
                 </div>
               </div>

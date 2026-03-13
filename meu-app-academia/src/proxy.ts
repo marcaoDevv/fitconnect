@@ -37,7 +37,7 @@ export async function proxy(request: NextRequest) {
 console.log('PROXY - pathname:', request.nextUrl.pathname)
 console.log('PROXY - user:', user?.email ?? 'null')
 
-  const rotasProtegidas = ['/home', '/dashboard', '/minha-ficha', '/treino', '/visualizar', '/anamnese', '/anamnese-visualizar']
+  const rotasProtegidas = ['/home', '/dashboard', '/minha-ficha', '/treino', '/visualizar', '/anamnese', '/anamnese-visualizar', '/chat']
   const acessandoRotaProtegida = rotasProtegidas.some(rota =>
     request.nextUrl.pathname.startsWith(rota)
   )
