@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 export default function MinhaFicha() {
   const [aluno, setAluno] = useState<any>(null)
   const [treinos, setTreinos] = useState<any>({})
-  const [activeTab, setActiveTab] = useState('') // Inicia vazio para ser preenchido dinamicamente
+  const [activeTab, setActiveTab] = useState('') 
   const [loading, setLoading] = useState(true)
   const [concluidos, setConcluidos] = useState<string[]>([]) 
   const router = useRouter()
@@ -34,7 +34,8 @@ export default function MinhaFicha() {
 
       if (exs && exs.length > 0) {
         const agrupados = exs.reduce((acc: any, curr: any) => {
-          const cat = curr.divisao.toUpperCase().replace('TREINO ', '')
+          // AGORA: Mantém o nome completo da divisão (ex: "Treino B")
+          const cat = curr.divisao.toUpperCase() 
           if (!acc[cat]) acc[cat] = []
           acc[cat].push(curr)
           return acc
@@ -42,7 +43,7 @@ export default function MinhaFicha() {
         
         setTreinos(agrupados)
 
-        // PEGA AS CHAVES EXISTENTES (Ex: ['B', 'C']) E DEFINE A PRIMEIRA COMO ATIVA
+        // Define a primeira aba disponível como ativa
         const abasExistentes = Object.keys(agrupados).sort()
         if (abasExistentes.length > 0) {
           setActiveTab(abasExistentes[0])
@@ -81,7 +82,6 @@ export default function MinhaFicha() {
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-black italic">SINCRONIZANDO...</div>
 
-  // MÁGICA AQUI: Pega apenas as letras que possuem exercícios cadastrados
   const abasDisponiveis = Object.keys(treinos).sort()
 
   return (
@@ -94,16 +94,16 @@ export default function MinhaFicha() {
         </p>
       </header>
 
-      {/* SELETOR DINÂMICO: Só renderiza se houver treinos */}
+      {/* SELETOR DINÂMICO COM NOMES COMPLETOS */}
       {abasDisponiveis.length > 0 && (
-        <div className="flex justify-center gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800">
+        <div className="flex justify-start gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800 overflow-x-auto no-scrollbar">
           {abasDisponiveis.map(tab => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setConcluidos([]) }}
-              className={`flex-1 py-4 rounded-2xl font-black transition-all max-w-[80px] ${
+              className={`flex-1 py-4 px-6 rounded-2xl font-black transition-all whitespace-nowrap text-[10px] uppercase tracking-widest ${
                 activeTab === tab 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 scale-105' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' 
                   : 'text-gray-600 hover:text-gray-400'
               }`}
             >
@@ -160,7 +160,7 @@ export default function MinhaFicha() {
             onClick={finalizarTreino}
             className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all"
           >
-            Finalizar Treino {activeTab}
+            Finalizar {activeTab}
           </button>
         </div>
       )}
