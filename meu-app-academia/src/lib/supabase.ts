@@ -1,10 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Substitua as frases abaixo pelos valores reais entre aspas
-const supabaseUrl = 'https://hujolruxwsmxawqlaclk.supabase.co'; 
-const supabaseAnonKey = 'sb_publishable_Fswj79J42LtRmB-h3FxecA_JuCWfH7H';
-
-console.log("DEBUG - Tentando conectar na URL:", supabaseUrl);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
