@@ -1,95 +1,159 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function MinhaFicha() {
-  const [user, setUser] = useState<any>(null)
-  const [treinos, setTreinos] = useState<any[]>([])
-  const [divisaoAtiva, setDivisaoAtiva] = useState('A')
+  const [aluno, setAluno] = useState<any>(null)
+  const [treinos, setTreinos] = useState<any>({})
+  const [activeTab, setActiveTab] = useState('A') // Inicia no Treino A
   const [loading, setLoading] = useState(true)
+  const [concluidos, setConcluidos] = useState<string[]>([]) 
+  const router = useRouter()
 
   useEffect(() => {
-    const carregarTreino = async () => {
-      // 1. Pega o aluno logado
+    const fetchDados = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
-        // 2. Busca os exercícios vinculados ao ID deste aluno
-        const { data } = await supabase
-          .from('exercicios')
-          .select('*')
-          .eq('aluno_id', user.id)
-          .order('created_at', { ascending: true })
-        
-        if (data) setTreinos(data)
+      if (!user) { router.push('/'); return }
+
+      // 1. Busca perfil
+      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setAluno(profile)
+
+      // 2. Busca exercícios
+      const { data: exs } = await supabase
+        .from('exercicios')
+        .select('*')
+        .eq('aluno_id', user.id)
+        .order('ordem', { ascending: true })
+
+      if (exs) {
+        const agrupados = exs.reduce((acc: any, curr: any) => {
+          const cat = curr.divisao.toUpperCase().replace('TREINO ', '') // Normaliza para 'A', 'B', etc.
+          if (!acc[cat]) acc[cat] = []
+          acc[cat].push(curr)
+          return acc
+        }, {})
+        setTreinos(agrupados)
       }
+
+      // 3. Persistência: Carrega progresso do localStorage
+      const salvo = localStorage.getItem(`progresso_${user.id}`)
+      if (salvo) setConcluidos(JSON.parse(salvo))
+
       setLoading(false)
     }
-    carregarTreino()
-  }, [])
+    fetchDados()
+  }, [router])
 
-  const exerciciosFiltrados = treinos.filter(ex => ex.divisao === divisaoAtiva)
+  // Salva no localStorage toda vez que marcar um exercício
+  useEffect(() => {
+    if (aluno?.id) {
+      localStorage.setItem(`progresso_${aluno.id}`, JSON.stringify(concluidos))
+    }
+  }, [concluidos, aluno])
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500">Abrindo sua ficha...</div>
+  const toggleConcluido = (id: string) => {
+    setConcluidos(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
+  }
+
+  const finalizarTreino = () => {
+    const confirmacao = window.confirm("Deseja finalizar o treino e limpar o progresso?")
+    if (confirmacao) {
+      alert(`Parabéns pelo treino de hoje! 🔥`)
+      setConcluidos([])
+      localStorage.removeItem(`progresso_${aluno.id}`)
+    }
+  }
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-black italic">SINCRONIZANDO...</div>
+
+  // Opções de abas fixas para o seletor
+  const abasDisponiveis = ['A', 'B', 'C', 'D', 'E']
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
-      {/* HEADER ESTILO APP */}
-      <header className="p-6 pt-12 bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
-        <h1 className="text-xl font-bold">Olá, {user?.email?.split('@')[0]} 👋</h1>
-        <p className="text-gray-400 text-sm">Bom treino hoje!</p>
+    <div className="min-h-screen bg-black text-white p-4 font-sans pb-24">
+      
+      <header className="py-8 text-center">
+        <h1 className="text-3xl font-black italic tracking-tighter uppercase">MEU<span className="text-blue-600">TREINO</span></h1>
+        <p className="text-gray-500 text-[10px] font-black uppercase tracking-[4px] mt-2">
+          {aluno?.full_name?.split(' ')[0] || 'Atleta'}
+        </p>
       </header>
 
-      {/* SELETOR DE TREINO (TABS) */}
-      <div className="flex overflow-x-auto p-4 gap-2 sticky top-[105px] bg-black z-10 scrollbar-hide">
-        {['A', 'B', 'C', 'D', 'E'].map(letra => (
+      {/* FILTRO DE ESTADO (Tab Switching) */}
+      <div className="flex justify-between gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800">
+        {abasDisponiveis.map(tab => (
           <button
-            key={letra}
-            onClick={() => setDivisaoAtiva(letra)}
-            className={`flex-none w-16 py-3 rounded-2xl font-bold transition-all ${
-              divisaoAtiva === letra ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'bg-gray-800 text-gray-500'
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-4 rounded-2xl font-black transition-all ${
+              activeTab === tab 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40 scale-105' 
+                : 'text-gray-600 hover:text-gray-400'
             }`}
           >
-            {letra}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* LISTA DE EXERCÍCIOS */}
-      <main className="p-4 space-y-4">
-        {exerciciosFiltrados.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-gray-600 italic">Nenhum exercício para o Treino {divisaoAtiva}.</p>
-          </div>
-        ) : (
-          exerciciosFiltrados.map((ex) => (
-            <div key={ex.id} className="bg-gray-900 p-5 rounded-3xl border border-gray-800 flex items-center justify-between group active:bg-gray-800 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-gray-100">{ex.nome}</h3>
-                <div className="flex gap-4 mt-1">
-                  <span className="text-blue-500 font-mono text-sm">{ex.series} Séries</span>
-                  <span className="text-gray-500 font-mono text-sm">{ex.repeticoes} Reps</span>
+      {/* LISTA DE EXERCÍCIOS OU MENSAGEM DINÂMICA */}
+      <main className="space-y-4">
+        {treinos[activeTab] && treinos[activeTab].length > 0 ? (
+          treinos[activeTab].map((ex: any) => (
+            <div 
+              key={ex.id}
+              onClick={() => toggleConcluido(ex.id)}
+              className={`p-6 rounded-[32px] border-2 transition-all active:scale-[0.97] cursor-pointer ${
+                concluidos.includes(ex.id) ? 'bg-green-900/10 border-green-500/30' : 'bg-gray-900 border-gray-800'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className={`font-bold text-lg ${concluidos.includes(ex.id) ? 'text-green-500 line-through opacity-50' : 'text-white'}`}>
+                    {ex.nome}
+                  </h3>
+                  <div className="flex gap-4 mt-2">
+                    <span className="text-[10px] font-black uppercase text-blue-500">{ex.series} Séries</span>
+                    <span className="text-[10px] font-black uppercase text-gray-500">{ex.repeticoes} Reps</span>
+                  </div>
                 </div>
-              </div>
-              
-              {/* CHECKBOX DE CONCLUÍDO */}
-              <div className="w-8 h-8 border-2 border-blue-600 rounded-full flex items-center justify-center group-active:bg-blue-600">
-                <div className="w-4 h-4 bg-transparent rounded-full"></div>
+                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                  concluidos.includes(ex.id) ? 'bg-green-500 border-green-500' : 'border-gray-700'
+                }`}>
+                  {concluidos.includes(ex.id) && <span className="text-black font-bold">✓</span>}
+                </div>
               </div>
             </div>
           ))
+        ) : (
+          /* MENSAGEM DE ESTADO VAZIO DINÂMICA */
+          <div className="text-center py-20 px-6 bg-gray-900/20 border-2 border-dashed border-gray-800 rounded-[40px] animate-in fade-in duration-700">
+            <div className="text-4xl mb-4">😴</div>
+            <h2 className="text-xl font-black uppercase italic text-gray-500">
+              Treino {activeTab} não cadastrado
+            </h2>
+            <p className="text-gray-600 text-sm mt-2">
+              Parece que hoje é seu dia de descanso. Aproveite para recuperar as fibras! 🍗
+            </p>
+          </div>
         )}
       </main>
 
-      {/* MENU INFERIOR FIXO */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-md border-t border-gray-800 p-4 flex justify-around items-center">
-         <button className="text-blue-500 flex flex-col items-center">
-            <span className="text-xs mt-1">Minha Ficha</span>
-         </button>
-         <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/')} className="text-gray-500 flex flex-col items-center">
-            <span className="text-xs mt-1">Sair</span>
-         </button>
-      </nav>
+      {/* BOTÃO FINALIZAR FIXO */}
+      {treinos[activeTab] && (
+        <div className="fixed bottom-6 left-0 right-0 px-6">
+          <button 
+            onClick={finalizarTreino}
+            className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-[4px] text-xs shadow-2xl active:scale-95 transition-all"
+          >
+            Finalizar Treino {activeTab}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
