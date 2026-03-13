@@ -18,6 +18,13 @@ export default function MinhaFicha() {
 
       // 1. Busca perfil
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      
+      // TRAVA DE SEGURANÇA: Redireciona personal para a dashboard dele
+      if (profile?.role === 'personal') {
+        router.push('/dashboard')
+        return
+      }
+
       setAluno(profile)
 
       // 2. Busca exercícios
