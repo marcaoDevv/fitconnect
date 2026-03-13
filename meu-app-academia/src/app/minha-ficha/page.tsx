@@ -16,7 +16,6 @@ export default function MinhaFicha() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
 
-      // 1. Busca perfil e bloqueia Personal
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       
       if (profile?.role === 'personal') {
@@ -25,7 +24,6 @@ export default function MinhaFicha() {
       }
       setAluno(profile)
 
-      // 2. Busca exercícios
       const { data: exs } = await supabase
         .from('exercicios')
         .select('*')
@@ -34,7 +32,6 @@ export default function MinhaFicha() {
 
       if (exs && exs.length > 0) {
         const agrupados = exs.reduce((acc: any, curr: any) => {
-          // AGORA: Mantém o nome completo da divisão (ex: "Treino B")
           const cat = curr.divisao.toUpperCase() 
           if (!acc[cat]) acc[cat] = []
           acc[cat].push(curr)
@@ -43,14 +40,12 @@ export default function MinhaFicha() {
         
         setTreinos(agrupados)
 
-        // Define a primeira aba disponível como ativa
         const abasExistentes = Object.keys(agrupados).sort()
         if (abasExistentes.length > 0) {
           setActiveTab(abasExistentes[0])
         }
       }
 
-      // 3. Persistência
       const salvo = localStorage.getItem(`progresso_${user.id}`)
       if (salvo) setConcluidos(JSON.parse(salvo))
 
@@ -94,7 +89,6 @@ export default function MinhaFicha() {
         </p>
       </header>
 
-      {/* SELETOR DINÂMICO COM NOMES COMPLETOS */}
       {abasDisponiveis.length > 0 && (
         <div className="flex justify-start gap-2 mb-8 bg-gray-900/50 p-2 rounded-3xl border border-gray-800 overflow-x-auto no-scrollbar">
           {abasDisponiveis.map(tab => (
@@ -123,8 +117,8 @@ export default function MinhaFicha() {
                 concluidos.includes(ex.id) ? 'bg-green-900/10 border-green-500/30' : 'bg-gray-900 border-gray-800'
               }`}
             >
-              <div className="flex justify-between items-center">
-                <div>
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex-1">
                   <h3 className={`font-bold text-lg ${concluidos.includes(ex.id) ? 'text-green-500 line-through opacity-50' : 'text-white'}`}>
                     {ex.nome}
                   </h3>
@@ -133,10 +127,12 @@ export default function MinhaFicha() {
                     <span className="text-[10px] font-black uppercase text-gray-500">{ex.repeticoes} Reps</span>
                   </div>
                 </div>
-                <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
+                
+                {/* BOLINHA COM CORRIGIDA: text-white e flex-shrink-0 */}
+                <div className={`w-8 h-8 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
                   concluidos.includes(ex.id) ? 'bg-green-500 border-green-500' : 'border-gray-700'
                 }`}>
-                  {concluidos.includes(ex.id) && <span className="text-black font-bold">✓</span>}
+                  {concluidos.includes(ex.id) && <span className="text-white font-black text-xl">✓</span>}
                 </div>
               </div>
             </div>
