@@ -20,13 +20,19 @@ export default function Dashboard() {
         return
       }
 
-      // 2. Busca dados do Personal
+      // 2. Busca dados do perfil logado
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
       
+      // --- AJUSTE SOLICITADO: REDIRECIONAMENTO SE FOR ALUNO ---
+      if (profile?.role === 'aluno') {
+        router.push('/minha-ficha')
+        return
+      }
+
       setPersonal(profile)
 
       // 3. Busca os alunos vinculados a este Personal
@@ -111,14 +117,14 @@ export default function Dashboard() {
         {alunos.length === 0 ? (
           /* EMPTY STATE (Quando não tem nenhum aluno) */
           <div className="bg-gray-900/30 border-2 border-dashed border-gray-800 rounded-[40px] p-20 text-center animate-in fade-in zoom-in duration-500">
-             <div className="text-6xl mb-6">🏋️‍♂️</div>
-             <h2 className="text-2xl font-black mb-2 italic uppercase">Sua academia está vazia</h2>
-             <p className="text-gray-500 max-w-sm mx-auto mb-10 font-medium">
-               Você ainda não tem alunos vinculados. Clique abaixo para copiar seu link e começar a cadastrar.
-             </p>
-             <button onClick={copiarLink} className="bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95">
-               Copiar meu Link agora
-             </button>
+              <div className="text-6xl mb-6">🏋️‍♂️</div>
+              <h2 className="text-2xl font-black mb-2 italic uppercase">Sua academia está vazia</h2>
+              <p className="text-gray-500 max-w-sm mx-auto mb-10 font-medium">
+                Você ainda não tem alunos vinculados. Clique abaixo para copiar seu link e começar a cadastrar.
+              </p>
+              <button onClick={copiarLink} className="bg-white text-black px-12 py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95">
+                Copiar meu Link agora
+              </button>
           </div>
         ) : alunosFiltrados.length === 0 ? (
           /* BUSCA SEM RESULTADO */
