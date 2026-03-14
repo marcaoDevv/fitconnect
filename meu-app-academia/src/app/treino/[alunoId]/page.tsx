@@ -14,7 +14,7 @@ function ConteudoMontarTreino() {
   const [exerciciosSessao, setExerciciosSessao] = useState<any[]>([])
   const [treinosExistentes, setTreinosExistentes] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-
+  
   const [nomeTreinoAtivo, setNomeTreinoAtivo] = useState('') 
   const [treinoCriado, setTreinoCriado] = useState(false)
   const [modoCriarNovo, setModoCriarNovo] = useState(false)
@@ -22,6 +22,7 @@ function ConteudoMontarTreino() {
   const [nomeExs, setNomeExs] = useState('')
   const [series, setSeries] = useState('')
   const [reps, setReps] = useState('')
+  const [descanso, setDescanso] = useState('60')
 
   useEffect(() => {
     async function inicializar() {
@@ -54,7 +55,6 @@ function ConteudoMontarTreino() {
     setTreinoCriado(true)
   }
 
-  // LÓGICA DO ARRASTAR E SOLTAR
   const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return
 
@@ -62,15 +62,9 @@ function ConteudoMontarTreino() {
     const [reorderedItem] = itens.splice(result.source.index, 1)
     itens.splice(result.destination.index, 0, reorderedItem)
 
-    // Atualiza o estado visual imediatamente
     setExerciciosSessao(itens)
 
-    // Salva a nova ordem no Supabase
-    const updates = itens.map((ex, index) => ({
-      id: ex.id,
-      ordem: index
-    }))
-
+    const updates = itens.map((ex, index) => ({ id: ex.id, ordem: index }))
     for (const item of updates) {
       await supabase.from('exercicios').update({ ordem: item.ordem }).eq('id', item.id)
     }
@@ -80,12 +74,20 @@ function ConteudoMontarTreino() {
     e.preventDefault()
     const novaOrdem = exerciciosSessao.length
     const { data, error } = await supabase.from('exercicios').insert([
-      { aluno_id: alunoId, nome: nomeExs, series: parseInt(series), repeticoes: reps, divisao: nomeTreinoAtivo, ordem: novaOrdem }
+      {
+        aluno_id: alunoId,
+        nome: nomeExs,
+        series: parseInt(series),
+        repeticoes: reps,
+        divisao: nomeTreinoAtivo,
+        ordem: novaOrdem,
+        descanso_segundos: parseInt(descanso)
+      }
     ]).select()
 
     if (!error && data) {
       setExerciciosSessao([...exerciciosSessao, data[0]])
-      setNomeExs(''); setSeries(''); setReps('')
+      setNomeExs(''); setSeries(''); setReps(''); setDescanso('60')
     }
   }
 
@@ -94,51 +96,134 @@ function ConteudoMontarTreino() {
     setExerciciosSessao(exerciciosSessao.filter(ex => ex.id !== id))
   }
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-bold">CARREGANDO...</div>
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center text-blue-500 font-bold">
+      CARREGANDO...
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-black text-white p-4 md:p-10">
       <header className="max-w-6xl mx-auto mb-10 flex justify-between items-center border-b border-gray-900 pb-6">
         <div>
-           <h1 className="text-2xl font-black italic tracking-tighter uppercase italic">FIT<span className="text-blue-600">EDITOR</span></h1>
-           <p className="text-gray-500 text-xs">Personalizando treino de: {aluno?.full_name}</p>
+          <h1 className="text-2xl font-black italic tracking-tighter uppercase">FIT<span className="text-blue-600">EDITOR</span></h1>
+          <p className="text-gray-500 text-xs">Personalizando treino de: {aluno?.full_name}</p>
         </div>
-        <button onClick={() => router.push(`/visualizar/${alunoId}`)} className="bg-green-600 px-8 py-3 rounded-2xl font-bold text-sm">
+        <button
+          onClick={() => router.push(`/visualizar/${alunoId}`)}
+          className="bg-green-600 px-8 py-3 rounded-2xl font-bold text-sm"
+        >
           Finalizar
         </button>
       </header>
 
       <main className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12">
         <section className="space-y-8">
+
+          {/* SELETOR DE FICHA */}
           <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800">
             <h2 className="text-[10px] font-black text-gray-500 uppercase mb-4 tracking-widest italic">Escolher Ficha</h2>
             <div className="flex flex-wrap gap-2 mb-4">
-                {treinosExistentes.map(nome => (
-                  <button key={nome} onClick={() => carregarDadosDoTreino(nome)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${nomeTreinoAtivo === nome ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-gray-800 border-transparent text-gray-400'}`}>
-                    {nome}
-                  </button>
-                ))}
-                <button onClick={() => { setModoCriarNovo(true); setTreinoCriado(false); setNomeTreinoAtivo(''); setExerciciosSessao([]) }} className="px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-gray-700 text-gray-500 hover:text-white">
-                  + Novo
+              {treinosExistentes.map(nome => (
+                <button
+                  key={nome}
+                  onClick={() => carregarDadosDoTreino(nome)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                    nomeTreinoAtivo === nome
+                      ? 'bg-blue-600 border-blue-400 text-white shadow-lg'
+                      : 'bg-gray-800 border-transparent text-gray-400'
+                  }`}
+                >
+                  {nome}
                 </button>
+              ))}
+              <button
+                onClick={() => {
+                  setModoCriarNovo(true)
+                  setTreinoCriado(false)
+                  setNomeTreinoAtivo('')
+                  setExerciciosSessao([])
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-dashed border-gray-700 text-gray-500 hover:text-white"
+              >
+                + Novo
+              </button>
             </div>
             {modoCriarNovo && (
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Ex: Treino A" className="flex-1 p-4 bg-black rounded-2xl border border-gray-800 outline-none" value={nomeTreinoAtivo} onChange={(e) => setNomeTreinoAtivo(e.target.value)} />
-                  <button onClick={() => { if(nomeTreinoAtivo) setTreinoCriado(true) }} className="bg-blue-600 px-6 rounded-2xl font-bold">OK</button>
-                </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Ex: Treino A"
+                  className="flex-1 p-4 bg-black rounded-2xl border border-gray-800 outline-none"
+                  value={nomeTreinoAtivo}
+                  onChange={(e) => setNomeTreinoAtivo(e.target.value)}
+                />
+                <button
+                  onClick={() => { if (nomeTreinoAtivo) setTreinoCriado(true) }}
+                  className="bg-blue-600 px-6 rounded-2xl font-bold"
+                >
+                  OK
+                </button>
+              </div>
             )}
           </div>
 
+          {/* FORMULÁRIO DE EXERCÍCIO */}
           <div className={`transition-all duration-500 ${treinoCriado ? 'opacity-100' : 'opacity-10 pointer-events-none'}`}>
             <form onSubmit={salvarExercicio} className="bg-gray-900 p-8 rounded-3xl border border-gray-800">
-              <h2 className="text-xl font-black uppercase italic text-blue-500 mb-6">{nomeTreinoAtivo || 'Selecione um Treino'}</h2>
+              <h2 className="text-xl font-black uppercase italic text-blue-500 mb-6">
+                {nomeTreinoAtivo || 'Selecione um Treino'}
+              </h2>
               <div className="space-y-4">
-                <input placeholder="Nome do Exercício" className="w-full p-4 bg-black rounded-2xl border border-gray-800 outline-none" value={nomeExs} onChange={e => setNomeExs(e.target.value)} required />
+                <input
+                  placeholder="Nome do Exercício"
+                  className="w-full p-4 bg-black rounded-2xl border border-gray-800 outline-none focus:border-blue-500 transition-all"
+                  value={nomeExs}
+                  onChange={e => setNomeExs(e.target.value)}
+                  required
+                />
                 <div className="grid grid-cols-2 gap-4">
-                  <input type="number" placeholder="Séries" className="w-full p-4 bg-black rounded-2xl border border-gray-800" value={series} onChange={e => setSeries(e.target.value)} required />
-                  <input type="text" placeholder="Repetições" className="w-full p-4 bg-black rounded-2xl border border-gray-800" value={reps} onChange={e => setReps(e.target.value)} required />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase ml-2">Séries</label>
+                    <input
+                      type="number"
+                      placeholder="Ex: 3"
+                      className="w-full p-4 bg-black rounded-2xl border border-gray-800 outline-none focus:border-blue-500 transition-all"
+                      value={series}
+                      onChange={e => setSeries(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase ml-2">Repetições</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 12"
+                      className="w-full p-4 bg-black rounded-2xl border border-gray-800 outline-none focus:border-blue-500 transition-all"
+                      value={reps}
+                      onChange={e => setReps(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
+
+                {/* CAMPO DE DESCANSO */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase ml-2">Tempo de Descanso</label>
+                  <select
+                    className="w-full p-4 bg-black rounded-2xl border border-gray-800 outline-none focus:border-blue-500 transition-all text-white"
+                    value={descanso}
+                    onChange={e => setDescanso(e.target.value)}
+                  >
+                    <option value="30">30 segundos</option>
+                    <option value="45">45 segundos</option>
+                    <option value="60">60 segundos</option>
+                    <option value="90">90 segundos</option>
+                    <option value="120">2 minutos</option>
+                    <option value="180">3 minutos</option>
+                  </select>
+                </div>
+
                 <button className="w-full bg-blue-600 py-4 rounded-2xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-500 transition-all">
                   Adicionar à Ficha
                 </button>
@@ -149,7 +234,9 @@ function ConteudoMontarTreino() {
 
         {/* LISTA COM DRAG AND DROP */}
         <section>
-          <h2 className="text-gray-500 uppercase text-xs font-black mb-6 tracking-widest italic">Ordem de Execução (Arraste para organizar)</h2>
+          <h2 className="text-gray-500 uppercase text-xs font-black mb-6 tracking-widest italic">
+            Ordem de Execução (Arraste para organizar)
+          </h2>
           
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="exercicios">
@@ -162,12 +249,16 @@ function ConteudoMontarTreino() {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${
-                            snapshot.isDragging ? 'bg-blue-900/40 border-blue-500 shadow-2xl z-50' : 'bg-gray-900 border-gray-800'
+                            snapshot.isDragging
+                              ? 'bg-blue-900/40 border-blue-500 shadow-2xl z-50'
+                              : 'bg-gray-900 border-gray-800'
                           }`}
                         >
                           <div className="flex items-center gap-4">
-                            {/* ÍCONE DE ALÇA (DRAG HANDLE) */}
-                            <div {...provided.dragHandleProps} className="text-gray-700 hover:text-gray-400 cursor-grab active:cursor-grabbing px-2 text-xl">
+                            <div
+                              {...provided.dragHandleProps}
+                              className="text-gray-700 hover:text-gray-400 cursor-grab active:cursor-grabbing px-2 text-xl"
+                            >
                               ⠿
                             </div>
                             <div>
@@ -177,10 +268,14 @@ function ConteudoMontarTreino() {
                               </p>
                               <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
                                 {ex.series} Séries x {ex.repeticoes} Reps
+                                <span className="ml-2 text-gray-700">· {ex.descanso_segundos || 60}s descanso</span>
                               </p>
                             </div>
                           </div>
-                          <button onClick={() => excluirExercicio(ex.id)} className="text-gray-600 hover:text-red-500 transition-colors px-2">
+                          <button
+                            onClick={() => excluirExercicio(ex.id)}
+                            className="text-gray-600 hover:text-red-500 transition-colors px-2"
+                          >
                             🗑️
                           </button>
                         </div>

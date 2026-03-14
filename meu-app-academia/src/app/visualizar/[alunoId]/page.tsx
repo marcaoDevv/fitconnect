@@ -79,7 +79,7 @@ export default function VisualizarFichas() {
         </div>
         
         <div className="bg-gray-900 border border-gray-800 px-6 py-3 rounded-2xl">
-          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Divisões Ativas</p>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Treinos ativos</p>
           <p className="text-2xl font-black text-blue-500">{Object.keys(treinosAgrupados).length}</p>
         </div>
       </header>
